@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html ng-app="dashboardApp">
+<head>
+    <title>Store Data Dashboard</title>
+    <!-- AngularJS library -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+    
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+    
+    <!-- Bootstrap for styling -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body ng-controller="DashboardController">
+    <!-- Main dashboard container -->
+    <div class="container dashboard-container">
+
+        <!-- Compact header with inline elements -->
+        <div class="row header-row">
+            <div class="col-md-8">
+                <h2 class="dashboard-title">Store Data Dashboard</h2>
+            </div>
+            <div class="col-md-4 text-right">
+                <span class="update-info">Updated: {{lastUpdated | date:'short'}}</span>
+                <button class="btn btn-primary btn-sm" ng-click="refreshData()">Refresh</button>
+            </div>
+        </div>
+
+        <!-- Add Filter Row for Store and Date Range -->
+        <div class="row filter-row">
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label for="storeSelect">Store:</label>
+                    <select id="storeSelect" class="form-control" ng-model="selectedStore" ng-change="filterData()">
+                        <option value="all">All Stores</option>
+                        <option ng-repeat="store in stores" value="{{store.id}}">Store #{{store.id}}</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Date Range:</label>
+                    <div class="input-group">
+                        <input type="date" class="form-control" ng-model="dateRange.start" ng-change="filterData()">
+                        <span class="input-group-addon">to</span>
+                        <input type="date" class="form-control" ng-model="dateRange.end" ng-change="filterData()">
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-default reset-btn" ng-click="resetFilters()">Reset Filters</button>
+            </div>
+        </div>
+        
+        <!-- Key Metrics Summary Row -->
+        <div class="row">
+
+            <!-- Sales metric -->
+            <div class="col-md-3">
+                <div class="dashboard-card text-center">
+                    <div class="metric-label">Total Sales</div>
+                    <div class="metric-value">${{metrics.totalSales | number:2}}</div>
+                    <div ng-class="{'text-success': metrics.salesTrend > 0, 'text-danger': metrics.salesTrend < 0}">
+                        {{metrics.salesTrend}}% from last period
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Orders metric -->
+            <div class="col-md-3">
+                <div class="dashboard-card text-center">
+                    <div class="metric-label">Orders</div>
+                    <div class="metric-value">{{metrics.totalOrders}}</div>
+                    <div ng-class="{'text-success': metrics.ordersTrend > 0, 'text-danger': metrics.ordersTrend < 0}">
+                        {{metrics.ordersTrend}}% from last period
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Customers metric -->
+            <div class="col-md-3">
+                <div class="dashboard-card text-center">
+                    <div class="metric-label">Customers</div>
+                    <div class="metric-value">{{metrics.totalCustomers}}</div>
+                    <div ng-class="{'text-success': metrics.customersTrend > 0, 'text-danger': metrics.customersTrend < 0}">
+                        {{metrics.customersTrend}}% from last period
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Average Order Value metric -->
+            <div class="col-md-3">
+                <div class="dashboard-card text-center">
+                    <div class="metric-label">Avg Order Value</div>
+                    <div class="metric-value">${{metrics.avgOrderValue | number:2}}</div>
+                    <div ng-class="{'text-success': metrics.aovTrend > 0, 'text-danger': metrics.aovTrend < 0}">
+                        {{metrics.aovTrend}}% from last period
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Charts Row -->
+        <div class="row">
+            
+            <!-- Sales over time chart -->
+            <div class="col-md-6">
+                <div class="dashboard-card chart-card">
+                    <h3>Sales Over Time</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="salesChart" class="chart-container"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Top products chart -->
+            <div class="col-md-6">
+                <div class="dashboard-card chart-card">
+                    <h3>Top Products</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="productsChart" class="chart-container"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Orders Table (more compact) -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="dashboard-card">
+                    <h3>Recent Orders</h3>
+                    <div class="table-responsive orders-table">
+                        <table class="table table-condensed table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer</th>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="order in recentOrders">
+                                    <td>{{order.id}}</td>
+                                    <td>{{order.customer}}</td>
+                                    <td>{{order.date | date:'short'}}</td>
+                                    <td>${{order.amount | number:2}}</td>
+                                    <td><span class="label" ng-class="{'label-success': order.status === 'Completed', 
+                                                                      'label-warning': order.status === 'Processing',
+                                                                      'label-danger': order.status === 'Cancelled'}">{{order.status}}</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>
